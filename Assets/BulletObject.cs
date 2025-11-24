@@ -7,10 +7,6 @@ public class BulletObject : ScriptableObject
 {
     [Header("Bullet Config")]
     public float LifeCycle = 5f;
-    public float linearVelocity = 0f;
-    public float acceleration = 0f;
-    public float angularVelocity = 0f;
-    public float angularAcceleration = 0f;
     public float maxVelocity = 10f;
     public float InitRotation = 0f; // 修复: 添加 InitRotation 字段 (Sender.Awake 使用)
     public float LinearVelocity = 0f; // 修复: 添加 LinearVelocity 字段 (Sender.InitBullet 使用)

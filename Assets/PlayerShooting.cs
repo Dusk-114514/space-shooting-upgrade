@@ -6,9 +6,9 @@ public class PlayerShooting : MonoBehaviour
     public GameObject shotgunBulletPrefab; // 霰弹枪子弹预制体
     public GameObject laserBulletPrefab; // 激光子弹预制体
     public Transform firePoint; // 发射点
-    public float basicFireRate = 0.5f; // 基本射速
-    public float shotgunFireRate = 0.8f; // 霰弹枪射速
-    public float laserFireRate = 0.1f; // 激光射速
+    public float basicFireRate = 0.5f; // 基本射速 (可升级)
+    public float shotgunFireRate = 0.8f; // 霰弹枪射速 (可升级)
+    public float laserFireRate = 0.1f; // 激光射速 (可升级)
     public float shotgunSpreadAngle = 30f; // 霰弹枪扩散角
     public int shotgunBulletCount = 5; // 霰弹枪子弹数量
     private int weaponLevel = 1; // 1=Basic, 2=Shotgun, 3=Laser
@@ -91,6 +91,18 @@ public class PlayerShooting : MonoBehaviour
     {
         weaponLevel = level;
         UpdateFireRate();
-        Debug.Log("Weapon level set to: " + level + ", Fire Rate: " + fireRate);
+        nextFireTime = Time.time; // 重置计时器, 允许立即射击
+        Debug.Log("Weapon level set to: " + level + ", Fire Rate: " + fireRate + ", Ready to fire immediately");
+    }
+
+    public void UpgradeFireRate(float decrement)
+    {
+        // 全局升级所有武器射速 (每级减少 decrement)
+        basicFireRate = Mathf.Max(0.1f, basicFireRate - decrement);
+        shotgunFireRate = Mathf.Max(0.1f, shotgunFireRate - decrement);
+        laserFireRate = Mathf.Max(0.05f, laserFireRate - decrement);
+        UpdateFireRate(); // 更新当前武器火速
+        nextFireTime = Time.time; // 重置计时器
+        Debug.Log("All weapons fire rate upgraded by " + decrement + ", Current: " + fireRate);
     }
 }

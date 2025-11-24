@@ -3,38 +3,55 @@ using System.Collections;
 
 public class BossMovement : MonoBehaviour
 {
-    public float chargeSpeed = 6f; // 突刺速度 (控制冲刺时间 = 距离 / 速度)
-    public float minChargeInterval = 3f; // 最小突刺间隔 (秒, 随机间隔下限)
-    public float maxChargeInterval = 5f; // 最大突刺间隔 (秒, 随机间隔上限)
-    public float stayDuration = 1f; // 停留时间 (秒)
-    public float returnDuration = 1f; // 退回时间 (秒)
-    public float smoothTime = 0.5f; // 平滑时间 (秒, Lerp 曲线时间, 控制加速/减速平滑度)
-    private Vector3 originalPosition; // 原位 (固定中心上部)
-    private float nextChargeTime; // 下次突刺时间
-    private GameObject player; // 玩家对象引用
-    private Coroutine chargeCoroutine; // 当前突刺协程
-    private Vector3 chargeTarget; // 固定突刺目标位置 (捕获玩家位置)
+    [Header("冲锋设置")]
+    public float chargeSpeed = 6f;
+    public float minChargeInterval = 3f;
+    public float maxChargeInterval = 5f;
+    public float stayDuration = 1f;
+    public float returnDuration = 1f;
 
-    void Start()
+    // 原位 (Boss 每次冲锋后返回的位置)
+    // 我们可以让它默认为空，在启用脚本时自动记录当前位置
+    private Vector3 originalPosition;
+
+    private float nextChargeTime;
+    private GameObject player;
+    private Coroutine chargeCoroutine;
+    private Vector3 chargeTarget;
+
+    void Awake()
     {
-        originalPosition = new Vector3(0f, 4.5f, 0f); // 固定中心上部 (X=0, Y=4.5f)
-        transform.position = originalPosition;
-        player = GameObject.FindGameObjectWithTag("Player"); // 假设 Player Tag = "Player"
-        nextChargeTime = Time.time + Random.Range(minChargeInterval, maxChargeInterval); // 随机首次突刺时间
-        Debug.Log("BossMovement initialized. Fixed Position: " + originalPosition + ", Next Charge in " + (nextChargeTime - Time.time) + "s");
+        // 默认禁用自己，等待 BossController 唤醒
+        // 这样可以避免在 Boss 入场(DiveDown)时意外触发冲锋
+        this.enabled = false;
+    }
+
+    // 当脚本被 BossController 启用时调用 (OnEnable)
+    void OnEnable()
+    {
+        player = GameObject.FindGameObjectWithTag("Player");
+
+        // 【关键修改】不再强制瞬移，而是把当前位置（入场后的位置）记为“原点”
+        // 这样 Boss 就会从 DiveDown 结束的地方开始战斗
+        originalPosition = transform.position;
+
+        // 重置下一次冲锋时间
+        nextChargeTime = Time.time + Random.Range(minChargeInterval, maxChargeInterval);
+
+        Debug.Log($"Boss 技能模块已激活。原点设定为: {originalPosition}");
     }
 
     void Update()
     {
-        // 只检查突刺触发
+        // 只有当脚本启用时，Update 才会运行
         if (Time.time >= nextChargeTime && chargeCoroutine == null && player != null)
         {
-            if (Random.value < 0.3f) // 30% 概率触发
+            if (Random.value < 0.3f)
             {
-                chargeTarget = player.transform.position; // 立即捕获玩家当前精确位置 (X,Y)
+                chargeTarget = player.transform.position;
                 chargeCoroutine = StartCoroutine(ChargeCoroutine());
-                nextChargeTime = Time.time + Random.Range(minChargeInterval, maxChargeInterval); // 随机下一间隔
-                Debug.Log("Boss Charge triggered to target: " + chargeTarget + "! Next in " + (nextChargeTime - Time.time) + "s");
+                nextChargeTime = Time.time + Random.Range(minChargeInterval, maxChargeInterval);
+                Debug.Log("Boss 释放冲锋技能！");
             }
         }
     }
@@ -42,34 +59,37 @@ public class BossMovement : MonoBehaviour
     IEnumerator ChargeCoroutine()
     {
         Vector3 startPos = transform.position;
-        Vector3 targetPos = chargeTarget; // 直接使用捕获的玩家位置 (X,Y, 无调整)
-        // 阶段1: 冲刺 (动态时间 = 距离 / chargeSpeed)
+        Vector3 targetPos = chargeTarget;
+
+        // 1. 冲刺
         float distance = Vector3.Distance(startPos, targetPos);
-        float dynamicRushDuration = distance / chargeSpeed; // 基于速度计算时间 (e.g., 10 units / 6f = 1.67s)
+        float dynamicRushDuration = distance / chargeSpeed;
         float rushTime = 0f;
+
         while (rushTime < dynamicRushDuration)
         {
             rushTime += Time.deltaTime;
-            float t = rushTime / dynamicRushDuration; // 0 to 1
-            t = Mathf.SmoothStep(0f, 1f, t); // 平滑加速
+            float t = rushTime / dynamicRushDuration;
+            t = Mathf.SmoothStep(0f, 1f, t);
             transform.position = Vector3.Lerp(startPos, targetPos, t);
             yield return null;
         }
-        // 阶段2: 停留 (stayDuration 秒)
+
+        // 2. 停留
         yield return new WaitForSeconds(stayDuration);
-        Debug.Log("Boss Charge: Reached target, staying for " + stayDuration + "s");
-        // 阶段3: 平滑退回原位 (returnDuration 秒)
+
+        // 3. 返回原位
         float returnTime = 0f;
         while (returnTime < returnDuration)
         {
             returnTime += Time.deltaTime;
-            float t = returnTime / returnDuration; // 0 to 1
-            t = Mathf.SmoothStep(0f, 1f, t); // 平滑退回
+            float t = returnTime / returnDuration;
+            t = Mathf.SmoothStep(0f, 1f, t);
             transform.position = Vector3.Lerp(transform.position, originalPosition, t);
             yield return null;
         }
-        transform.position = originalPosition; // 强制回原位
+
+        transform.position = originalPosition;
         chargeCoroutine = null;
-        Debug.Log("Boss Charge completed, returned to original position");
     }
 }

@@ -1,46 +1,77 @@
 using UnityEngine;
+using System; // 1. 引入 System 命名空间以使用 Action
 
 public class EnemyHealth : MonoBehaviour
 {
-    public int maxHealth = 5; // Boss最大生命值
-    private int currentHealth;
+    [Header("基础属性")]
+    public int maxHealth = 100; // Boss 血量建议设大一点，比如 100 或 200
+    [SerializeField] private int currentHealth;
+
+    [Header("无敌状态")]
+    public bool isInvulnerable = false;
+
+    [Header("视觉反馈")]
+    [SerializeField] private Color normalColor = Color.white;
+    [SerializeField] private Color invulnerableColor = new Color(1f, 1f, 1f, 0.5f);
+
+    private SpriteRenderer sr;
     private ScoreManager scoreManager;
-    [SerializeField] private LayerMask playerBulletLayerMask; // 玩家子弹的 LayerMask
-    [SerializeField] private LayerMask enemyBulletLayerMask;  // 敌人子弹的 LayerMask
 
-    void Start()
+    // --- 新增：血量变化事件 ---
+    // UI 脚本会订阅这个事件，参数是 (当前血量, 最大血量)
+    public event Action<int, int> OnHealthChanged;
+
+    private void Awake()
     {
+        sr = GetComponent<SpriteRenderer>();
         currentHealth = maxHealth;
+    }
+
+    private void Start()
+    {
         scoreManager = FindObjectOfType<ScoreManager>();
-        Debug.Log("Enemy health initialized to: " + currentHealth);
-    }
 
-    void OnTriggerEnter2D(Collider2D other)
-    {
-        // 判断是否属于玩家子弹层
-        if (IsLayerInLayerMask(other.gameObject.layer, playerBulletLayerMask))
+        if (gameObject.CompareTag("SmallEnemy"))
         {
-            //TakeDamage(1);  // 扣除 Boss 的生命值
-            Destroy(other.gameObject);  // 销毁玩家子弹
-            Debug.Log("Player bullet hit Boss, health reduced");
+            isInvulnerable = false;
         }
-        // 判断是否属于敌人子弹层
-        /*else if (IsLayerInLayerMask(other.gameObject.layer, enemyBulletLayerMask))
-        {
-            Debug.Log("Boss ignored self bullet");
-        }*/
+
+        UpdateColor();
+
+        // 游戏开始时，广播一次初始血量，确保 UI 显示是满的
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
     }
 
-    // 判断某层是否包含在 LayerMask 中
-    private bool IsLayerInLayerMask(int layer, LayerMask layerMask)
+    public void SetInvulnerable(bool state)
     {
-        return (layerMask.value & (1 << layer)) != 0;
+        if (state == true && gameObject.CompareTag("SmallEnemy")) return;
+        isInvulnerable = state;
+        UpdateColor();
+    }
+
+    private void UpdateColor()
+    {
+        if (sr != null) sr.color = isInvulnerable ? invulnerableColor : normalColor;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Bullet"))
+        {
+            TakeDamage(1);
+            Destroy(other.gameObject);
+        }
     }
 
     public void TakeDamage(int damage)
     {
+        if (isInvulnerable && !gameObject.CompareTag("SmallEnemy")) return;
+
         currentHealth -= damage;
-        Debug.Log("Enemy took damage, health now: " + currentHealth);
+
+        // --- 关键修改：广播血量变化 ---
+        OnHealthChanged?.Invoke(currentHealth, maxHealth);
+
         if (currentHealth <= 0)
         {
             Die();
@@ -51,8 +82,11 @@ public class EnemyHealth : MonoBehaviour
     {
         if (scoreManager != null)
         {
-            scoreManager.AddScore(50); // 击败Boss加50分
+            if (gameObject.CompareTag("SmallEnemy")) scoreManager.AddEnemyScore();
+            else scoreManager.AddBossScore();
         }
-        Destroy(gameObject); // Boss生命为0时销毁
+
+        // 注意：如果是 Boss，死的时候最好先把血条隐藏，这里暂且简单销毁
+        Destroy(gameObject);
     }
 }

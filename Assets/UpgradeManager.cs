@@ -11,7 +11,7 @@ public class UpgradeManager : MonoBehaviour
     public float speedIncrement = 1f; // 速度每次升级增量
     public float fireRateDecrement = 0.1f; // 火速每次升级减少量
     private int speedLevel = 1; // 速度等级
-    private int weaponLevel = 1; // 武器等级
+    private int weaponLevel = 1; // 武器等级 (初始 Basic)
     private float baseSpeed; // 存储玩家的初始速度
     private float baseFireRate; // 存储玩家的初始火速
 
@@ -27,7 +27,6 @@ public class UpgradeManager : MonoBehaviour
         {
             Debug.LogError("UpgradePanel is not assigned in Inspector!");
         }
-
         // 为按钮添加点击事件
         if (upgradeSpeedButton != null)
         {
@@ -38,17 +37,15 @@ public class UpgradeManager : MonoBehaviour
         {
             Debug.LogError("UpgradeSpeedButton is not assigned in Inspector!");
         }
-
         if (upgradeWeaponButton != null)
         {
-            upgradeWeaponButton.onClick.AddListener(UpgradeWeapon);
-            Debug.Log("Upgrade Weapon button event listener added.");
+            upgradeWeaponButton.onClick.AddListener(UpgradeFireRate); // 改为 UpgradeFireRate (只升级射速)
+            Debug.Log("Upgrade Fire Rate button event listener added.");
         }
         else
         {
             Debug.LogError("UpgradeWeaponButton is not assigned in Inspector!");
         }
-
         // 从PlayerMovement和PlayerShooting中读取初始值
         if (playerMovement == null)
         {
@@ -71,7 +68,6 @@ public class UpgradeManager : MonoBehaviour
         {
             Debug.LogError("PlayerMovement reference is null, cannot retrieve base speed!");
         }
-
         if (playerShooting == null)
         {
             playerShooting = FindObjectOfType<PlayerShooting>();
@@ -86,7 +82,7 @@ public class UpgradeManager : MonoBehaviour
         }
         if (playerShooting != null)
         {
-            baseFireRate = playerShooting.fireRate;
+            baseFireRate = playerShooting.fireRate; // 初始 Basic 0.5f
             Debug.Log("Base fire rate retrieved from PlayerShooting: " + baseFireRate);
         }
         else
@@ -146,14 +142,12 @@ public class UpgradeManager : MonoBehaviour
         }
     }
 
-    void UpgradeWeapon()
+    void UpgradeFireRate() // 修复: 改为 UpgradeFireRate, 只升级射速 (不切换武器)
     {
-        weaponLevel++;
         if (playerShooting != null && baseFireRate > 0)
         {
-            float newFireRate = baseFireRate - (weaponLevel - 1) * fireRateDecrement; // 基于初始火速减少
-            playerShooting.fireRate = Mathf.Max(0.1f, newFireRate); // 最低射速0.1秒
-            Debug.Log("Fire rate upgraded to: " + newFireRate);
+            playerShooting.UpgradeFireRate(fireRateDecrement); // 升级当前武器射速
+            Debug.Log("Fire rate upgraded by " + fireRateDecrement);
         }
         else
         {
@@ -169,7 +163,7 @@ public class UpgradeManager : MonoBehaviour
         if (upgradePanel != null)
         {
             upgradePanel.SetActive(false);
-            Debug.Log("Upgrade panel disabled after weapon upgrade.");
+            Debug.Log("Upgrade panel disabled after fire rate upgrade.");
         }
     }
 }

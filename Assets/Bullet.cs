@@ -3,29 +3,27 @@ using UnityEngine;
 public class Bullet : MonoBehaviour
 {
     private ScoreManager scoreManager;
+    public int damage = 1; // 伤害值
 
     void Start()
     {
         scoreManager = FindObjectOfType<ScoreManager>();
-        Destroy(gameObject, 2f); // 添加2秒销毁作为备用，防止遗漏
+        gameObject.layer = LayerMask.NameToLayer("PlayerBullet"); // 设置玩家子弹 Layer
+        Destroy(gameObject, 2f); // 2秒自毁
     }
 
     void Update()
     {
-        // 如果子弹超出屏幕上边界，销毁
-        if (transform.position.y > 6f) // 调整范围以匹配你的屏幕
-            Destroy(gameObject);
+        if (transform.position.y > 6f) Destroy(gameObject); // 超出销毁
     }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        if (other.CompareTag("Enemy")) // 假设Boss有"Enemy"标签
+        // 检查小怪或 Boss 标签
+        if (other.CompareTag("SmallEnemy") || other.CompareTag("Enemy")) // 小怪 "SmallEnemy", Boss "Enemy"
         {
-            EnemyHealth enemyHealth = other.GetComponent<EnemyHealth>();
-            if (enemyHealth != null)
-            {
-                enemyHealth.TakeDamage(1); // 每次击中减少1点生命
-            }
+            // 伤害由 EnemyHealth 的 LayerMask 处理, 此处只销毁子弹
+            Destroy(gameObject);
         }
     }
 }

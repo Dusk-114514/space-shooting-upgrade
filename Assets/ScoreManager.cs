@@ -19,6 +19,20 @@ public class ScoreManager : MonoBehaviour
         UpdateScoreText();
     }
 
+    // 新增: Boss 专用加分方法 (50分)
+    public void AddBossScore()
+    {
+        AddScore(50);
+        Debug.Log("Boss defeated! +50 points");
+    }
+
+    // 新增: 小怪专用加分方法 (10分)
+    public void AddEnemyScore()
+    {
+        AddScore(10);
+        Debug.Log("Enemy defeated! +10 points");
+    }
+
     private void UpdateScoreText()
     {
         if (scoreText != null)
