@@ -3,26 +3,27 @@ using UnityEngine;
 public class Bullet : MonoBehaviour
 {
     private ScoreManager scoreManager;
-    public int damage = 1; // 伤害值
+    public int damage = 1;
 
     void Start()
     {
         scoreManager = FindObjectOfType<ScoreManager>();
-        gameObject.layer = LayerMask.NameToLayer("PlayerBullet"); // 设置玩家子弹 Layer
-        Destroy(gameObject, 2f); // 2秒自毁
+        gameObject.layer = LayerMask.NameToLayer("PlayerBullet");
+
+        // 2秒后自毁 (对于全方位射击，时间销毁是最简单的边界处理方式)
+        Destroy(gameObject, 2f);
     }
 
     void Update()
     {
-        if (transform.position.y > 6f) Destroy(gameObject); // 超出销毁
+        // 【已删除】原有的高度限制: if (transform.position.y > 6f) Destroy(gameObject);
+        // 现在不需要这一行了，因为我们要允许子弹向任何方向飞行
     }
 
     void OnTriggerEnter2D(Collider2D other)
     {
-        // 检查小怪或 Boss 标签
-        if (other.CompareTag("SmallEnemy") || other.CompareTag("Enemy")) // 小怪 "SmallEnemy", Boss "Enemy"
+        if (other.CompareTag("SmallEnemy") || other.CompareTag("Enemy"))
         {
-            // 伤害由 EnemyHealth 的 LayerMask 处理, 此处只销毁子弹
             Destroy(gameObject);
         }
     }

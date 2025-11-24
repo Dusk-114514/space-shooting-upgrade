@@ -116,7 +116,7 @@ Rigidbody2D:
   m_Interpolate: 0
   m_SleepingMode: 1
   m_CollisionDetection: 0
-  m_Constraints: 4
+  m_Constraints: 7
 --- !u!58 &7306427655201031703
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -167,8 +167,12 @@ MonoBehaviour:
   maxHealth: 1
   currentHealth: 0
   isInvulnerable: 0
+  hasDirectionalShield: 0
+  vulnerableAngle: 0
+  shieldWidth: 90
   normalColor: {r: 0.011764687, g: 0.99215686, b: 0.88795483, a: 1}
   invulnerableColor: {r: 0.97735846, g: 0.10142388, b: 0.10142388, a: 0.5}
+  shieldedColor: {r: 0, g: 0, b: 1, a: 1}
 --- !u!114 &3739538776255452001
 MonoBehaviour:
   m_ObjectHideFlags: 0

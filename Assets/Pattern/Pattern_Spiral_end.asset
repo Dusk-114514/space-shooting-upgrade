@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3dc525238484d4e449406f0ff4445987, type: 3}
+  m_Name: Pattern_Spiral_end
+  m_EditorClassIdentifier: 
+  LifeCycle: 10
+  maxVelocity: 10
+  InitRotation: 3
+  LinearVelocity: 3.5
+  Acceleration: 0
+  AngularAcceleration: 2
+  AngularVelocity: 0
+  SenderAngularVelocity: 90
+  SenderMaxAngularVelocity: 2.147484e+9
+  SenderAcceleration: 0
+  Count: 30
+  LineAngle: 30
+  SendInterval: 0.1
+  prefabs: {fileID: 3808010006120773802, guid: 345ca627951d1e24aa118bab38e8a29b, type: 3}

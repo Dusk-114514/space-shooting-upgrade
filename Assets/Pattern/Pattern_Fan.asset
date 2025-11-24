@@ -10,19 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3dc525238484d4e449406f0ff4445987, type: 3}
-  m_Name: Pattern_Spiral_Single
+  m_Name: Pattern_Fan
   m_EditorClassIdentifier: 
-  LifeCycle: 10
+  LifeCycle: 8
   maxVelocity: 10
-  InitRotation: 3
-  LinearVelocity: 2
-  Acceleration: 1
-  AngularAcceleration: 2
-  AngularVelocity: 2
-  SenderAngularVelocity: 30
-  SenderMaxAngularVelocity: 2.147484e+9
+  InitRotation: -90
+  LinearVelocity: 4
+  Acceleration: 0
+  AngularAcceleration: 0
+  AngularVelocity: 0
+  SenderAngularVelocity: 0
+  SenderMaxAngularVelocity: 100
   SenderAcceleration: 0
-  Count: 40
-  LineAngle: 30
-  SendInterval: 0.8
-  prefabs: {fileID: 3808010006120773802, guid: 345ca627951d1e24aa118bab38e8a29b, type: 3}
+  Count: 10
+  LineAngle: 15
+  SendInterval: 1
+  prefabs: {fileID: 2136066396781179594, guid: 4bab08118cfad684aa34ce058663472c, type: 3}

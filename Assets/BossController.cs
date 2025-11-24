@@ -10,150 +10,204 @@ public class MinionGroupConfig
     public PatternType pattern;
     public int count = 10;
     public float radius = 4f;
-    public float rotateSpeed = 30f;
     public float spawnDelay = 0.1f;
+    public float rotateSpeed = 30f;
 }
 
 [System.Serializable]
 public class BossPhase
 {
-    public string phaseName = "Spell Card";
+    public string phaseName = "Phase";
 
-    [Header("阶段设置")]
-    [Tooltip("此阶段 Boss 是否无敌？")]
-    public bool isInvulnerablePhase = true;
+    [Header("核心机制")]
+    public bool isInvulnerable = false;
+    public bool enableMovement = false;
+    [Tooltip("是否开启方向性护盾 (P3 True)")]
+    public bool useDirectionalShield = false;
 
-    [Header("弹幕配置")]
-    [Tooltip("拖入此阶段 Boss 要发射的弹幕配置文件 (BulletObject)")]
-    public BulletObject danmakuConfig; // 【新增】这里存放这一波的弹幕配置
+    [Header("结束条件")]
+    public float duration = 0f;
+    public bool waitUntilBossDeath = false;
 
-    [Header("小怪配置")]
+    [Header("攻击配置")]
+    public BulletObject danmakuConfig;
     public List<MinionGroupConfig> minionGroups;
 }
 
-// --- 控制器类 ---
 [RequireComponent(typeof(EnemyHealth))]
 public class BossController : MonoBehaviour
 {
-    [Header("战斗流程配置")]
-    [SerializeField] private List<BossPhase> allPhases;
+    [Header("循环阶段配置")]
+    [SerializeField] private List<BossPhase> loopPhases;
+
+    [Header("狂暴阶段配置")]
+    [SerializeField] private BossPhase enragePhase;
+    [SerializeField] private float enrageTimeLimit = 240f;
 
     [Header("状态监控")]
     [SerializeField] private int minionsAliveCount = 0;
-    private bool waitingForMinionsClear = false;
+    private float battleTimer = 0f;
+    private bool isEnraged = false;
 
-    // 组件引用
     private EnemyHealth bossHealth;
     private BossMovement bossMovement;
-    private Sender danmakuSender; // 【新增】发射器引用
+    private Sender danmakuSender;
+
+    private Coroutine currentPhaseCoroutine;
+    private Vector3 initialPosition;
 
     private void Awake()
     {
         bossHealth = GetComponent<EnemyHealth>();
         bossMovement = GetComponent<BossMovement>();
-
-        // 【新增】自动查找 Boss 身上的 Sender 组件
-        // 如果 Boss 身上没挂，尝试在子物体里找（以防你把发射点做成了子物体）
         danmakuSender = GetComponent<Sender>();
-        if (danmakuSender == null)
-        {
-            danmakuSender = GetComponentInChildren<Sender>();
-        }
+        if (danmakuSender == null) danmakuSender = GetComponentInChildren<Sender>();
     }
 
     private void Start()
     {
-        // 游戏开始时先关闭发射器，防止乱射
-        if (danmakuSender != null) danmakuSender.enabled = false;
+        initialPosition = transform.position;
 
-        if (allPhases == null || allPhases.Count == 0)
-        {
-            Debug.LogWarning("Boss 没有配置任何阶段 (Phases)！");
-            return;
-        }
-        StartCoroutine(CombatLoop());
+        if (danmakuSender != null) danmakuSender.enabled = false;
+        if (bossMovement != null) bossMovement.enabled = false;
+
+        StartCoroutine(GlobalGameTimer());
+        StartCoroutine(MainCombatLoop());
     }
 
-    private IEnumerator CombatLoop()
+    private IEnumerator GlobalGameTimer()
+    {
+        while (battleTimer < enrageTimeLimit)
+        {
+            battleTimer += Time.deltaTime;
+            yield return null;
+        }
+
+        Debug.LogWarning("!!! BOSS 狂暴 !!!");
+        isEnraged = true;
+        StopCoroutine("MainCombatLoop");
+        if (currentPhaseCoroutine != null) StopCoroutine(currentPhaseCoroutine);
+        StartCoroutine(RunPhase(enragePhase));
+    }
+
+    private IEnumerator MainCombatLoop()
     {
         yield return new WaitForSeconds(1f);
 
-        if (bossMovement != null)
+        int phaseIndex = 0;
+        while (!isEnraged)
         {
-            Debug.Log("Boss 入场完毕，激活移动 AI！");
-            bossMovement.enabled = true;
+            if (loopPhases.Count == 0) break;
+
+            BossPhase currentPhase = loopPhases[phaseIndex % loopPhases.Count];
+            currentPhaseCoroutine = StartCoroutine(RunPhase(currentPhase));
+            yield return currentPhaseCoroutine;
+
+            if (!isEnraged && bossHealth.GetCurrentHealth() > 0)
+            {
+                // 阶段间隙：停火、无敌、归位
+                if (danmakuSender != null) danmakuSender.SetPattern(null);
+                if (bossMovement != null) bossMovement.enabled = false;
+
+                bossHealth.SetDirectionalShield(false, 0);
+                bossHealth.SetInvulnerable(true); // 间隙无敌
+
+                float transitionTime = 2.0f;
+                float elapsed = 0f;
+                Vector3 startPos = transform.position;
+
+                while (elapsed < transitionTime)
+                {
+                    transform.position = Vector3.Lerp(startPos, initialPosition, elapsed / transitionTime);
+                    elapsed += Time.deltaTime;
+                    yield return null;
+                }
+                transform.position = initialPosition;
+            }
+
+            phaseIndex++;
         }
-
-        // 遍历所有阶段
-        for (int i = 0; i < allPhases.Count; i++)
-        {
-            BossPhase currentPhase = allPhases[i];
-            Debug.Log($"<color=cyan>BOSS 进入阶段 {i + 1}: {currentPhase.phaseName}</color>");
-
-            // 1. 设置无敌
-            if (currentPhase.isInvulnerablePhase)
-            {
-                bossHealth.SetInvulnerable(true);
-            }
-
-            // 2. 【核心集成】设置并启动弹幕
-            if (danmakuSender != null)
-            {
-                // 将当前阶段的配置传给 Sender，Sender 会自动重置并开始工作
-                danmakuSender.SetPattern(currentPhase.danmakuConfig);
-            }
-
-            // 3. 生成小怪
-            minionsAliveCount = 0;
-            foreach (var group in currentPhase.minionGroups)
-            {
-                yield return StartCoroutine(SpawnGroup(group));
-            }
-
-            // 4. 等待清空 (此时 Boss 一边放弹幕，一边无敌)
-            if (minionsAliveCount > 0)
-            {
-                waitingForMinionsClear = true;
-                yield return new WaitUntil(() => minionsAliveCount <= 0);
-                waitingForMinionsClear = false;
-            }
-
-            // 5. 阶段结束：护盾破碎
-            Debug.Log("阶段完成！Boss 护盾失效！停止射击并虚弱 5 秒...");
-            bossHealth.SetInvulnerable(false);
-
-            // 【核心集成】破防后，停止发射弹幕 (传入 null 即可关闭 Sender)
-            if (danmakuSender != null)
-            {
-                danmakuSender.SetPattern(null);
-            }
-
-            yield return new WaitForSeconds(5f);
-        }
-
-        Debug.Log("所有阶段结束！");
-        // 如果你想在所有阶段结束后 Boss 发狂射击，可以在这里加一行：
-        // if (danmakuSender != null) danmakuSender.SetPattern(finalPattern);
     }
 
+    private IEnumerator RunPhase(BossPhase phase)
+    {
+        Debug.Log($"<color=cyan>>>> 启动阶段: {phase.phaseName}</color>");
+
+        // 用于管理护盾随机变化的协程
+        Coroutine shieldShuffler = null;
+
+        // 1. 设置无敌/护盾
+        if (phase.useDirectionalShield)
+        {
+            // 初始随机
+            bossHealth.SetDirectionalShield(true, Random.Range(0f, 360f));
+            // 【核心修改】启动定期洗牌协程，每隔几秒换个位置
+            shieldShuffler = StartCoroutine(ShuffleShieldRoutine());
+        }
+        else
+        {
+            bossHealth.SetDirectionalShield(false, 0);
+            bossHealth.SetInvulnerable(phase.isInvulnerable);
+        }
+
+        // 2. 移动
+        if (bossMovement != null) bossMovement.enabled = phase.enableMovement;
+
+        // 3. 弹幕
+        if (danmakuSender != null) danmakuSender.SetPattern(phase.danmakuConfig);
+
+        // 4. 小怪
+        minionsAliveCount = 0;
+        foreach (var group in phase.minionGroups)
+        {
+            yield return StartCoroutine(SpawnGroup(group));
+        }
+
+        // 5. 等待条件
+        if (minionsAliveCount > 0)
+        {
+            yield return new WaitUntil(() => minionsAliveCount <= 0);
+        }
+        else if (phase.waitUntilBossDeath)
+        {
+            yield return new WaitUntil(() => bossHealth.GetCurrentHealth() <= 0);
+        }
+        else if (phase.duration > 0)
+        {
+            yield return new WaitForSeconds(phase.duration);
+        }
+
+        // 【清理】阶段结束时，记得停止护盾洗牌，否则下一阶段可能还会乱跳
+        if (shieldShuffler != null) StopCoroutine(shieldShuffler);
+    }
+
+    // 【新增逻辑】每隔 4 秒重新随机一次护盾缺口
+    private IEnumerator ShuffleShieldRoutine()
+    {
+        while (true)
+        {
+            // 等待时间建议和 BossMovement 的冲锋间隔（3-5秒）差不多
+            yield return new WaitForSeconds(4.0f);
+
+            // 重新随机一个角度
+            float newAngle = Random.Range(0f, 360f);
+            bossHealth.SetDirectionalShield(true, newAngle);
+
+            // 这里可以加一个音效播放代码，提示玩家“弱点变了！”
+        }
+    }
+
+    // --- 下面保持不变 ---
     private IEnumerator SpawnGroup(MinionGroupConfig group)
     {
         for (int i = 0; i < group.count; i++)
         {
-            Vector3 spawnPos = GeometricMath.CalculatePosition(
-                group.pattern,
-                transform.position,
-                i,
-                group.count,
-                group.radius
-            );
-
+            Vector3 spawnPos = GeometricMath.CalculatePosition(group.pattern, transform.position, i, group.count, group.radius);
             if (group.prefab != null)
             {
                 GameObject minionObj = Instantiate(group.prefab, spawnPos, Quaternion.identity);
                 RegisterMinion(minionObj, group, spawnPos);
             }
-
             if (group.spawnDelay > 0) yield return new WaitForSeconds(group.spawnDelay);
         }
     }
@@ -165,14 +219,8 @@ public class BossController : MonoBehaviour
         if (enemyScript != null)
         {
             enemyScript.SetParentBoss(this);
-            if (group.rotateSpeed != 0)
-            {
-                enemyScript.ActivateSatelliteMode(this.transform, spawnPos, group.rotateSpeed);
-            }
-            else
-            {
-                enemyScript.ActivateStaticMode();
-            }
+            if (group.rotateSpeed != 0) enemyScript.ActivateSatelliteMode(this.transform, spawnPos, group.rotateSpeed);
+            else enemyScript.ActivateStaticMode();
         }
     }
 
