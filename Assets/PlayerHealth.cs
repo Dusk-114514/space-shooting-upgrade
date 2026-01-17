@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI; // 必须引用 UI
+using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour
 {
@@ -7,9 +7,13 @@ public class PlayerHealth : MonoBehaviour
     public int maxHealth = 3;
     private int currentHealth;
 
+    [Header("Protection (受伤保护)")]
+    public float damageCooldown = 0.5f; // 受伤后的无敌时间 (秒)
+    private float lastDamageTime = -100f; // 上次受伤的时间点
+
     [Header("UI Settings")]
-    public Image healthOrbFill; // 红色液体图片
-    public Text healthText;     // 【新增】显示数字的 Text
+    public Image healthOrbFill;
+    public Text healthText;
     public float flowSpeed = 5f;
 
     private float targetFillAmount = 1f;
@@ -19,21 +23,12 @@ public class PlayerHealth : MonoBehaviour
     {
         currentHealth = maxHealth;
         targetFillAmount = 1f;
-
         gameOverManager = FindObjectOfType<GameOverManager>();
-
-        // 初始化 UI (文字和水位)
         UpdateHealthUI();
-
-        if (gameOverManager == null)
-        {
-            Debug.LogError("GameOverManager not found!");
-        }
     }
 
     void Update()
     {
-        // 平滑流动效果
         if (healthOrbFill != null)
         {
             healthOrbFill.fillAmount = Mathf.Lerp(healthOrbFill.fillAmount, targetFillAmount, Time.deltaTime * flowSpeed);
@@ -42,15 +37,22 @@ public class PlayerHealth : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        // 【核心修复】检查无敌时间
+        // 如果距离上次受伤还没过完冷却时间，直接忽略这次伤害
+        if (Time.time < lastDamageTime + damageCooldown)
+        {
+            return;
+        }
+
+        // 更新受伤时间
+        lastDamageTime = Time.time;
+
         Debug.Log($"Player taking {damage} damage.");
         currentHealth -= damage;
 
         if (currentHealth < 0) currentHealth = 0;
 
-        // 计算新水位
         targetFillAmount = (float)currentHealth / maxHealth;
-
-        // 【关键】每次受伤立刻更新文字显示
         UpdateHealthUI();
 
         if (currentHealth <= 0)
@@ -59,33 +61,22 @@ public class PlayerHealth : MonoBehaviour
         }
     }
 
+    // ... (Heal, UpdateHealthUI, GameOver 保持不变) ...
     public void Heal(int amount)
     {
         currentHealth += amount;
         if (currentHealth > maxHealth) currentHealth = maxHealth;
-
         targetFillAmount = (float)currentHealth / maxHealth;
         UpdateHealthUI();
     }
 
-    // 更新文字的方法
     private void UpdateHealthUI()
     {
-        // 1. 如果有文字组件，更新为 "当前 / 最大" 的格式
-        if (healthText != null)
-        {
-            healthText.text = $"{currentHealth} / {maxHealth}";
-        }
-
-        // 注意：fillAmount 是在 Update 里平滑变化的，这里只负责设置文字和瞬间水位(如果需要)
-        // targetFillAmount 已经在 TakeDamage 里设置了
+        if (healthText != null) healthText.text = $"{currentHealth} / {maxHealth}";
     }
 
     private void GameOver()
     {
-        if (gameOverManager != null)
-        {
-            gameOverManager.ShowGameOverScreen();
-        }
+        if (gameOverManager != null) gameOverManager.ShowGameOverScreen();
     }
 }

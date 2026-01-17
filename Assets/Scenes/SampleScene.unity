@@ -420,8 +420,8 @@ Transform:
   m_GameObject: {fileID: 50539331}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.0123, y: 0.20279995, z: 0}
-  m_LocalScale: {x: 2.0727386, y: 1.260711, z: 1}
+  m_LocalPosition: {x: -0.0062, y: 0.1991, z: 0}
+  m_LocalScale: {x: 2.1340919, y: 1.298028, z: 1.0296}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 927478591}
@@ -515,7 +515,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  m_Color: {r: 0.93962264, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 0, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -6311,8 +6311,8 @@ Transform:
   m_GameObject: {fileID: 927478589}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -3.47, z: 0}
-  m_LocalScale: {x: 0.35631523, y: 0.6211723, z: 1}
+  m_LocalPosition: {x: -0.003, y: -3.375, z: 0}
+  m_LocalScale: {x: 0.5037585, y: 0.77627903, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 50539332}
@@ -6370,6 +6370,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 1000
+  damageCooldown: 0.5
   healthOrbFill: {fileID: 1606364249}
   healthText: {fileID: 110618244}
   flowSpeed: 5
@@ -6863,6 +6864,7 @@ GameObject:
   - component: {fileID: 1114092891}
   - component: {fileID: 1114092893}
   - component: {fileID: 1114092892}
+  - component: {fileID: 1114092894}
   m_Layer: 0
   m_Name: Boss
   m_TagString: Enemy
@@ -7029,7 +7031,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc4c9b9c02b289c40a9cb2b78c3b1418, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 1000
+  maxHealth: 3000
   currentHealth: 0
   isInvulnerable: 0
   hasDirectionalShield: 0
@@ -7051,6 +7053,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   damage: 10
+  destroyOnImpact: 0
 --- !u!114 &1114092891
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7068,42 +7071,67 @@ MonoBehaviour:
     isInvulnerable: 1
     enableMovement: 0
     useDirectionalShield: 0
+    spawnSuicideSquad: 1
+    suicideSquadCount: 3
+    suicideSquadInterval: 15
+    runePositions: []
     duration: 0
     waitUntilBossDeath: 0
-    danmakuConfig: {fileID: 11400000, guid: 7acc9070cb3ab4745807e7c44aa5dd98, type: 2}
+    danmakuConfig: {fileID: 0}
+    sniperConfig: {fileID: 11400000, guid: 520bad58cd486d0429d7c3df42584d19, type: 2}
     minionGroups:
     - prefab: {fileID: 2136066396781179594, guid: 4bab08118cfad684aa34ce058663472c, type: 3}
       pattern: 0
       count: 30
-      radius: 2
+      radius: 1
       spawnDelay: 0
       rotateSpeed: 20
   - phaseName: Spiral Attack
     isInvulnerable: 0
     enableMovement: 0
     useDirectionalShield: 0
+    spawnSuicideSquad: 0
+    suicideSquadCount: 4
+    suicideSquadInterval: 5
+    runePositions:
+    - {x: -4.000545, y: -0.1387222, z: 0}
+    - {x: 0.24, y: -2.71, z: 0}
+    - {x: 4.000545, y: -0.1387222, z: 0}
     duration: 30
     waitUntilBossDeath: 0
     danmakuConfig: {fileID: 11400000, guid: 6c4bf8645bf82a244a906ba41f6cd928, type: 2}
+    sniperConfig: {fileID: 0}
     minionGroups: []
   - phaseName: Charge Mode
     isInvulnerable: 1
     enableMovement: 1
     useDirectionalShield: 1
+    spawnSuicideSquad: 0
+    suicideSquadCount: 4
+    suicideSquadInterval: 5
+    runePositions: []
     duration: 20
     waitUntilBossDeath: 0
     danmakuConfig: {fileID: 0}
+    sniperConfig: {fileID: 0}
     minionGroups: []
   enragePhase:
     phaseName: BERSEKR
     isInvulnerable: 0
     enableMovement: 1
     useDirectionalShield: 0
+    spawnSuicideSquad: 0
+    suicideSquadCount: 4
+    suicideSquadInterval: 5
+    runePositions: []
     duration: 0
     waitUntilBossDeath: 1
     danmakuConfig: {fileID: 11400000, guid: 14add350095e47a45af9948a8a7a1ec5, type: 2}
+    sniperConfig: {fileID: 0}
     minionGroups: []
   enrageTimeLimit: 240
+  runePrefab: {fileID: 2509975988198077001, guid: ff90f608accb748429dc9b240146e69f, type: 3}
+  suicideMinionPrefab: {fileID: 9215731088774695251, guid: 42c06d362e6b5024499dca7398410e99, type: 3}
   minionsAliveCount: 0
 --- !u!120 &1114092892
 LineRenderer:
@@ -7225,6 +7253,19 @@ MonoBehaviour:
   radius: 0.75
   segments: 60
   lineWidth: 0.2
+--- !u!114 &1114092894
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1114092882}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9ab643bac7a5fe4e822bf1fa7e8bcdb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bullet: {fileID: 11400000, guid: 520bad58cd486d0429d7c3df42584d19, type: 2}
 --- !u!1 &1153695486
 GameObject:
   m_ObjectHideFlags: 0
@@ -8618,7 +8659,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d6cb3b4760da7b4bb3f0e7774024ee8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bullet: {fileID: 11400000, guid: 7acc9070cb3ab4745807e7c44aa5dd98, type: 2}
+  bullet: {fileID: 11400000, guid: 6c4bf8645bf82a244a906ba41f6cd928, type: 2}
 --- !u!1 &1807896444
 GameObject:
   m_ObjectHideFlags: 0

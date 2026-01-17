@@ -14,15 +14,14 @@ public class PlayerShooting : MonoBehaviour
     public float laserFireRate = 0.1f;
 
     [Header("Bullet Speeds")]
-    public float basicBulletSpeed = 10f;   // 基础子弹速度
-    public float shotgunBulletSpeed = 10f; // 散弹速度
-    public float laserBulletSpeed = 15f;   // 激光速度
+    public float basicBulletSpeed = 10f;
+    public float shotgunBulletSpeed = 10f;
+    public float laserBulletSpeed = 15f;
 
     [Header("Weapon Settings")]
     public float shotgunSpreadAngle = 30f;
     public int shotgunBulletCount = 5;
 
-    // 内部状态
     private int weaponLevel = 1;
     private float nextFireTime;
     public float fireRate = 0.5f;
@@ -34,7 +33,6 @@ public class PlayerShooting : MonoBehaviour
         if (firePoint == null) firePoint = transform;
         mainCam = Camera.main;
         UpdateFireRate();
-        Debug.Log("PlayerShooting initialized. Weapon Level: " + weaponLevel);
     }
 
     void Update()
@@ -65,7 +63,6 @@ public class PlayerShooting : MonoBehaviour
                 {
                     GameObject bullet = Instantiate(basicBulletPrefab, firePoint.position, firePoint.rotation);
                     Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
-                    // 修改：使用变量 basicBulletSpeed
                     if (rb != null) rb.velocity = bullet.transform.up * basicBulletSpeed;
                 }
                 break;
@@ -83,7 +80,6 @@ public class PlayerShooting : MonoBehaviour
 
                         GameObject bullet = Instantiate(shotgunBulletPrefab, firePoint.position, spreadRotation);
                         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
-                        // 修改：使用变量 shotgunBulletSpeed
                         if (rb != null) rb.velocity = bullet.transform.up * shotgunBulletSpeed;
                     }
                 }
@@ -94,7 +90,6 @@ public class PlayerShooting : MonoBehaviour
                 {
                     GameObject bullet = Instantiate(laserBulletPrefab, firePoint.position, firePoint.rotation);
                     Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
-                    // 修改：使用变量 laserBulletSpeed
                     if (rb != null) rb.velocity = bullet.transform.up * laserBulletSpeed;
                 }
                 break;
@@ -102,7 +97,6 @@ public class PlayerShooting : MonoBehaviour
         nextFireTime = Time.time + fireRate;
     }
 
-    // --- 辅助方法 ---
     void UpdateFireRate()
     {
         switch (weaponLevel)
@@ -120,13 +114,19 @@ public class PlayerShooting : MonoBehaviour
         nextFireTime = Time.time;
     }
 
-    // 你也可以扩展这个方法来升级子弹速度
-    public void UpgradeFireRate(float decrement)
+    // 【核心修改】增加 breakLimit 参数，允许突破射速下限
+    public void UpgradeFireRate(float decrement, bool breakLimit = false)
     {
-        basicFireRate = Mathf.Max(0.1f, basicFireRate - decrement);
-        shotgunFireRate = Mathf.Max(0.1f, shotgunFireRate - decrement);
-        laserFireRate = Mathf.Max(0.05f, laserFireRate - decrement);
+        // 如果 breakLimit 为 true，下限极低 (0.01f)，否则保持正常下限
+        float minBasic = breakLimit ? 0.01f : 0.1f;
+        float minShotgun = breakLimit ? 0.01f : 0.1f;
+        float minLaser = breakLimit ? 0.01f : 0.05f;
+
+        basicFireRate = Mathf.Max(minBasic, basicFireRate - decrement);
+        shotgunFireRate = Mathf.Max(minShotgun, shotgunFireRate - decrement);
+        laserFireRate = Mathf.Max(minLaser, laserFireRate - decrement);
+
         UpdateFireRate();
-        nextFireTime = Time.time;
+        Debug.Log($"射速升级！BreakLimit: {breakLimit}, 当前射速间隔: {fireRate}");
     }
 }

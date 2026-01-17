@@ -1,8 +1,8 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
-// --- Êı¾İ¶¨Òå ---
+// --- æ•°æ®å®šä¹‰ ---
 [System.Serializable]
 public class MinionGroupConfig
 {
@@ -19,57 +19,100 @@ public class BossPhase
 {
     public string phaseName = "Phase";
 
-    [Header("ºËĞÄ»úÖÆ")]
+    [Header("æ ¸å¿ƒæœºåˆ¶")]
     public bool isInvulnerable = false;
     public bool enableMovement = false;
-    [Tooltip("ÊÇ·ñ¿ªÆô·½ÏòĞÔ»¤¶Ü (P3 True)")]
     public bool useDirectionalShield = false;
 
-    [Header("½áÊøÌõ¼ş")]
+    [Header("P1 ç‰¹æ®Šæœºåˆ¶ (ç¥é£ç‰¹æ”»)")]
+    public bool spawnSuicideSquad = false;
+    public int suicideSquadCount = 4;       // å•ä¾§æ•°é‡
+    public float suicideSquadInterval = 3f; // ä¸Šä¸€æ³¢æ­»å…‰åï¼Œç­‰å¾…å¤šä¹…åˆ·ä¸‹ä¸€æ³¢
+
+    [Header("P2 ç‰¹æ®Šæœºåˆ¶ (ç¬¦æ–‡)")]
+    [Tooltip("å®šä¹‰ç¬¦æ–‡ç”Ÿæˆåæ ‡ï¼Œåˆ—è¡¨ä¸ºç©ºåˆ™ä¸ç”Ÿæˆ")]
+    public List<Vector3> runePositions;
+
+    [Header("ç»“æŸæ¡ä»¶")]
     public float duration = 0f;
     public bool waitUntilBossDeath = false;
 
-    [Header("¹¥»÷ÅäÖÃ")]
+    [Header("æ”»å‡»é…ç½®")]
+    [Tooltip("æ™®é€š/èºæ—‹å¼¹å¹• (Noneåˆ™åœç«)")]
     public BulletObject danmakuConfig;
+    [Tooltip("è‡ªæœºç‹™ (Noneåˆ™åœç«)")]
+    public BulletObject sniperConfig;
+
+    [Header("å°æ€ªé…ç½®")]
     public List<MinionGroupConfig> minionGroups;
 }
 
 [RequireComponent(typeof(EnemyHealth))]
 public class BossController : MonoBehaviour
 {
-    [Header("Ñ­»·½×¶ÎÅäÖÃ")]
+    [Header("å¾ªç¯é˜¶æ®µé…ç½®")]
     [SerializeField] private List<BossPhase> loopPhases;
 
-    [Header("¿ñ±©½×¶ÎÅäÖÃ")]
+    [Header("ç‹‚æš´é˜¶æ®µé…ç½®")]
     [SerializeField] private BossPhase enragePhase;
     [SerializeField] private float enrageTimeLimit = 240f;
 
-    [Header("×´Ì¬¼à¿Ø")]
+    [Header("é€šç”¨é¢„åˆ¶ä½“")]
+    [SerializeField] private GameObject runePrefab;
+    [SerializeField] private GameObject suicideMinionPrefab;
+
+    [Header("çŠ¶æ€ç›‘æ§")]
     [SerializeField] private int minionsAliveCount = 0;
     private float battleTimer = 0f;
     private bool isEnraged = false;
 
     private EnemyHealth bossHealth;
     private BossMovement bossMovement;
-    private Sender danmakuSender;
+
+    // å‘å°„å™¨å¼•ç”¨
+    private Sender normalSender;
+    private AimedSender sniperSender;
 
     private Coroutine currentPhaseCoroutine;
     private Vector3 initialPosition;
+    private List<GameObject> activeRunes = new List<GameObject>();
+    // è¿½è¸ªæ´»è·ƒçš„ç¥é£å°æ€ª
+    private List<GameObject> activeSuicideMinions = new List<GameObject>();
 
     private void Awake()
     {
         bossHealth = GetComponent<EnemyHealth>();
         bossMovement = GetComponent<BossMovement>();
-        danmakuSender = GetComponent<Sender>();
-        if (danmakuSender == null) danmakuSender = GetComponentInChildren<Sender>();
+
+        // ã€æ ¸å¿ƒä¿®å¤ã€‘æ”¹ä¸º GetComponentInChildrenï¼Œè¿™æ ·å³ä¾¿æŒ‚åœ¨å­ç‰©ä½“ä¸Šä¹Ÿèƒ½æ‰¾åˆ°
+        normalSender = GetComponentInChildren<Sender>();
+        sniperSender = GetComponentInChildren<AimedSender>();
+
+        // å¢åŠ ä¸¤å¥è°ƒè¯•æ—¥å¿—ï¼Œç¡®ä¿æ‰¾åˆ°äº†
+        if (normalSender == null) Debug.LogError("âŒ BossController æ²¡æ‰¾åˆ° Sender ç»„ä»¶ï¼è¯·æ£€æŸ¥å®ƒæ˜¯å¦æŒ‚åœ¨ Boss æˆ–å…¶å­ç‰©ä½“ä¸Šã€‚");
+        else Debug.Log("âœ… BossController æˆåŠŸè¿æ¥ Senderã€‚");
+
+        if (sniperSender == null) Debug.LogError("âŒ BossController æ²¡æ‰¾åˆ° AimedSender ç»„ä»¶ï¼è¯·æ£€æŸ¥æŒ‚è½½ã€‚");
+        else Debug.Log("âœ… BossController æˆåŠŸè¿æ¥ AimedSenderã€‚");
     }
 
     private void Start()
     {
         initialPosition = transform.position;
 
-        if (danmakuSender != null) danmakuSender.enabled = false;
-        if (bossMovement != null) bossMovement.enabled = false;
+        // ã€æ¸¸æˆå¼€å§‹ã€‘å¼ºåˆ¶å…³é—­æ‰€æœ‰å‘å°„å™¨ï¼Œç¡®ä¿å¹²å‡€çš„å¼€å±€
+        if (normalSender != null)
+        {
+            normalSender.SetPattern(null);
+        }
+        if (sniperSender != null)
+        {
+            sniperSender.SetPattern(null);
+        }
+        if (bossMovement != null)
+        {
+            bossMovement.enabled = false;
+        }
 
         StartCoroutine(GlobalGameTimer());
         StartCoroutine(MainCombatLoop());
@@ -82,16 +125,19 @@ public class BossController : MonoBehaviour
             battleTimer += Time.deltaTime;
             yield return null;
         }
-
-        Debug.LogWarning("!!! BOSS ¿ñ±© !!!");
+        Debug.LogWarning("!!! BOSS ç‹‚æš´ !!!");
         isEnraged = true;
         StopCoroutine("MainCombatLoop");
-        if (currentPhaseCoroutine != null) StopCoroutine(currentPhaseCoroutine);
+        if (currentPhaseCoroutine != null)
+        {
+            StopCoroutine(currentPhaseCoroutine);
+        }
         StartCoroutine(RunPhase(enragePhase));
     }
 
     private IEnumerator MainCombatLoop()
     {
+        // è¿›åœºç¼“å†²
         yield return new WaitForSeconds(1f);
 
         int phaseIndex = 0;
@@ -103,19 +149,25 @@ public class BossController : MonoBehaviour
             currentPhaseCoroutine = StartCoroutine(RunPhase(currentPhase));
             yield return currentPhaseCoroutine;
 
+            // --- é˜¶æ®µé—´éš™ (ä¼‘æ¯æ—¶é—´) ---
             if (!isEnraged && bossHealth.GetCurrentHealth() > 0)
             {
-                // ½×¶Î¼äÏ¶£ºÍ£»ğ¡¢ÎŞµĞ¡¢¹éÎ»
-                if (danmakuSender != null) danmakuSender.SetPattern(null);
+                // ã€æ ¸å¿ƒã€‘é—´éš™æœŸé—´ï¼Œå¼ºåˆ¶è®¾ä¸º nullï¼Œç¡®ä¿ Sender é—­å˜´
+                if (normalSender != null) normalSender.SetPattern(null);
+                if (sniperSender != null) sniperSender.SetPattern(null);
                 if (bossMovement != null) bossMovement.enabled = false;
 
+                // å¼€å¯é—´éš™æ— æ•Œ
                 bossHealth.SetDirectionalShield(false, 0);
-                bossHealth.SetInvulnerable(true); // ¼äÏ¶ÎŞµĞ
+                bossHealth.SetInvulnerable(true);
 
+                // æ¸…ç†ä¸Šä¸€é˜¶æ®µçš„æ®‹ç•™ç‰©
+                ClearRunes();
+
+                // Boss å½’ä½åŠ¨ç”»
                 float transitionTime = 2.0f;
                 float elapsed = 0f;
                 Vector3 startPos = transform.position;
-
                 while (elapsed < transitionTime)
                 {
                     transform.position = Vector3.Lerp(startPos, initialPosition, elapsed / transitionTime);
@@ -124,24 +176,21 @@ public class BossController : MonoBehaviour
                 }
                 transform.position = initialPosition;
             }
-
             phaseIndex++;
         }
     }
 
     private IEnumerator RunPhase(BossPhase phase)
     {
-        Debug.Log($"<color=cyan>>>> Æô¶¯½×¶Î: {phase.phaseName}</color>");
+        Debug.Log($"<color=cyan>>>> å¯åŠ¨é˜¶æ®µ: {phase.phaseName}</color>");
 
-        // ÓÃÓÚ¹ÜÀí»¤¶ÜËæ»ú±ä»¯µÄĞ­³Ì
         Coroutine shieldShuffler = null;
+        Coroutine suicideSquadLoop = null;
 
-        // 1. ÉèÖÃÎŞµĞ/»¤¶Ü
+        // 1. è®¾ç½®æœºåˆ¶ (æ— æ•Œ/æŠ¤ç›¾)
         if (phase.useDirectionalShield)
         {
-            // ³õÊ¼Ëæ»ú
             bossHealth.SetDirectionalShield(true, Random.Range(0f, 360f));
-            // ¡¾ºËĞÄĞŞ¸Ä¡¿Æô¶¯¶¨ÆÚÏ´ÅÆĞ­³Ì£¬Ã¿¸ô¼¸Ãë»»¸öÎ»ÖÃ
             shieldShuffler = StartCoroutine(ShuffleShieldRoutine());
         }
         else
@@ -150,20 +199,41 @@ public class BossController : MonoBehaviour
             bossHealth.SetInvulnerable(phase.isInvulnerable);
         }
 
-        // 2. ÒÆ¶¯
-        if (bossMovement != null) bossMovement.enabled = phase.enableMovement;
+        if (bossMovement != null)
+        {
+            bossMovement.enabled = phase.enableMovement;
+        }
 
-        // 3. µ¯Ä»
-        if (danmakuSender != null) danmakuSender.SetPattern(phase.danmakuConfig);
+        // 2. ã€æ ¸å¿ƒã€‘æ ¹æ®é…ç½®è®¾ç½®å‘å°„å™¨
+        if (normalSender != null)
+        {
+            normalSender.SetPattern(phase.danmakuConfig);
+        }
+        if (sniperSender != null)
+        {
+            sniperSender.SetPattern(phase.sniperConfig);
+        }
 
-        // 4. Ğ¡¹Ö
+        // 3. ç”ŸæˆæŠ¤ç›¾å°æ€ª
         minionsAliveCount = 0;
         foreach (var group in phase.minionGroups)
         {
             yield return StartCoroutine(SpawnGroup(group));
         }
 
-        // 5. µÈ´ıÌõ¼ş
+        // 4. å¯åŠ¨ç¥é£ç‰¹æ”»å¾ªç¯ (P1)
+        if (phase.spawnSuicideSquad)
+        {
+            suicideSquadLoop = StartCoroutine(SuicideSquadLoop(phase.suicideSquadCount, phase.suicideSquadInterval));
+        }
+
+        // 5. ç”Ÿæˆç¬¦æ–‡ (P2)
+        if (phase.runePositions != null && phase.runePositions.Count > 0)
+        {
+            SpawnRunes(phase.runePositions);
+        }
+
+        // 6. ç­‰å¾…ç»“æŸæ¡ä»¶
         if (minionsAliveCount > 0)
         {
             yield return new WaitUntil(() => minionsAliveCount <= 0);
@@ -177,27 +247,113 @@ public class BossController : MonoBehaviour
             yield return new WaitForSeconds(phase.duration);
         }
 
-        // ¡¾ÇåÀí¡¿½×¶Î½áÊøÊ±£¬¼ÇµÃÍ£Ö¹»¤¶ÜÏ´ÅÆ£¬·ñÔòÏÂÒ»½×¶Î¿ÉÄÜ»¹»áÂÒÌø
+        // é˜¶æ®µç»“æŸæ¸…ç†
         if (shieldShuffler != null) StopCoroutine(shieldShuffler);
+        if (suicideSquadLoop != null) StopCoroutine(suicideSquadLoop);
+
+        ClearRunes();
     }
 
-    // ¡¾ĞÂÔöÂß¼­¡¿Ã¿¸ô 4 ÃëÖØĞÂËæ»úÒ»´Î»¤¶ÜÈ±¿Ú
+    // --- ç¥é£ç‰¹æ”»é˜Ÿå¾ªç¯é€»è¾‘ ---
+    private IEnumerator SuicideSquadLoop(int count, float interval)
+    {
+        // é¦–æ¬¡ç«‹åˆ»ç”Ÿæˆ
+        yield return StartCoroutine(SpawnSuicideSquad(count));
+
+        while (true)
+        {
+            // æ¸…ç†ç©ºå¯¹è±¡
+            activeSuicideMinions.RemoveAll(item => item == null);
+
+            // ã€é˜²é‡å ã€‘åªè¦åœºä¸Šè¿˜æœ‰æ´»ç€çš„ï¼Œå°±ä¸€ç›´ç­‰å¾…
+            if (activeSuicideMinions.Count > 0)
+            {
+                yield return null;
+                continue;
+            }
+
+            // å…¨æ­»å…‰äº†ï¼Œå¼€å§‹å€’è®¡æ—¶
+            yield return new WaitForSeconds(interval);
+
+            // å€’è®¡æ—¶ç»“æŸï¼Œç”Ÿæˆä¸‹ä¸€æ³¢
+            yield return StartCoroutine(SpawnSuicideSquad(count));
+        }
+    }
+
+    private IEnumerator SpawnSuicideSquad(int countPerSide)
+    {
+        if (suicideMinionPrefab == null) yield break;
+
+        Vector3 leftSpawn = new Vector3(-12f, -8f, 0f);
+        Vector3 rightSpawn = new Vector3(12f, -8f, 0f);
+
+        float startX = 1.5f;
+        float spacing = 1.5f;
+        float targetY = 3.5f;
+
+        for (int i = 0; i < countPerSide; i++)
+        {
+            // --- å·¦è¾¹å°æ€ª ---
+            GameObject lMinion = Instantiate(suicideMinionPrefab, leftSpawn, Quaternion.identity);
+            SuicideMinion lScript = lMinion.GetComponent<SuicideMinion>();
+
+            if (lScript != null)
+            {
+                // è®¡ç®—ä½ç½®å’Œå»¶è¿Ÿ
+                Vector3 targetPos = new Vector3(-(startX + i * spacing), targetY, 0f);
+                float delay = i * 0.4f;
+                lScript.Initialize(targetPos, delay);
+            }
+            activeSuicideMinions.Add(lMinion);
+
+            // --- å³è¾¹å°æ€ª ---
+            GameObject rMinion = Instantiate(suicideMinionPrefab, rightSpawn, Quaternion.identity);
+            SuicideMinion rScript = rMinion.GetComponent<SuicideMinion>();
+
+            if (rScript != null)
+            {
+                // è®¡ç®—ä½ç½®å’Œå»¶è¿Ÿ
+                Vector3 targetPos = new Vector3(startX + i * spacing, targetY, 0f);
+                float delay = i * 0.4f;
+                rScript.Initialize(targetPos, delay);
+            }
+            activeSuicideMinions.Add(rMinion);
+
+            yield return new WaitForSeconds(0.2f);
+        }
+    }
+
+    // --- è¾…åŠ©æ–¹æ³• ---
+
+    private void SpawnRunes(List<Vector3> positions)
+    {
+        if (runePrefab == null) return;
+        foreach (Vector3 pos in positions)
+        {
+            GameObject rune = Instantiate(runePrefab, pos, Quaternion.identity);
+            activeRunes.Add(rune);
+        }
+    }
+
+    private void ClearRunes()
+    {
+        foreach (var rune in activeRunes)
+        {
+            if (rune != null) Destroy(rune);
+        }
+        activeRunes.Clear();
+    }
+
     private IEnumerator ShuffleShieldRoutine()
     {
         while (true)
         {
-            // µÈ´ıÊ±¼ä½¨ÒéºÍ BossMovement µÄ³å·æ¼ä¸ô£¨3-5Ãë£©²î²»¶à
             yield return new WaitForSeconds(4.0f);
-
-            // ÖØĞÂËæ»úÒ»¸ö½Ç¶È
             float newAngle = Random.Range(0f, 360f);
             bossHealth.SetDirectionalShield(true, newAngle);
-
-            // ÕâÀï¿ÉÒÔ¼ÓÒ»¸öÒôĞ§²¥·Å´úÂë£¬ÌáÊ¾Íæ¼Ò¡°Èõµã±äÁË£¡¡±
         }
     }
 
-    // --- ÏÂÃæ±£³Ö²»±ä ---
     private IEnumerator SpawnGroup(MinionGroupConfig group)
     {
         for (int i = 0; i < group.count; i++)
@@ -219,8 +375,14 @@ public class BossController : MonoBehaviour
         if (enemyScript != null)
         {
             enemyScript.SetParentBoss(this);
-            if (group.rotateSpeed != 0) enemyScript.ActivateSatelliteMode(this.transform, spawnPos, group.rotateSpeed);
-            else enemyScript.ActivateStaticMode();
+            if (group.rotateSpeed != 0)
+            {
+                enemyScript.ActivateSatelliteMode(this.transform, spawnPos, group.rotateSpeed);
+            }
+            else
+            {
+                enemyScript.ActivateStaticMode();
+            }
         }
     }
 

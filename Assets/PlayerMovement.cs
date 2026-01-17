@@ -29,7 +29,7 @@ public class PlayerMovement : MonoBehaviour
             rb.velocity = new Vector2(movement.x, movement.y); 
         }
 
-        // ±ß½çÏÞÖÆ
+   
         Vector2 pos = transform.position;
         pos.x = Mathf.Clamp(pos.x, -10.49f, 10.51f);
         pos.y = Mathf.Clamp(pos.y, -4.94f, 4.8f);

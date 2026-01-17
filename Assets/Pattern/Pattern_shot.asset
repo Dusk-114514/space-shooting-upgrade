@@ -10,22 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3dc525238484d4e449406f0ff4445987, type: 3}
-  m_Name: Pattern_Spiral_end
+  m_Name: Pattern_shot
   m_EditorClassIdentifier: 
-  damage: 1
-  LifeCycle: 10
+  damage: 10
+  LifeCycle: 5
   maxVelocity: 10
-  isAimed: 0
+  isAimed: 1
   aimOffset: 0
-  InitRotation: 3
-  LinearVelocity: 2
+  InitRotation: 0
+  LinearVelocity: 4
   Acceleration: 0
-  AngularAcceleration: 2
+  AngularAcceleration: 0
   AngularVelocity: 0
-  SenderAngularVelocity: 50
-  SenderMaxAngularVelocity: 30
+  SenderAngularVelocity: 0
+  SenderMaxAngularVelocity: 2.1474836e+9
   SenderAcceleration: 0
-  Count: 100
-  LineAngle: 5
-  SendInterval: 0.5
-  prefabs: {fileID: 3808010006120773802, guid: 345ca627951d1e24aa118bab38e8a29b, type: 3}
+  Count: 3
+  LineAngle: 15
+  SendInterval: 1
+  prefabs: {fileID: 6302154917517635040, guid: 8f7ce4f0ab065d442b03994e247ba13c, type: 3}
