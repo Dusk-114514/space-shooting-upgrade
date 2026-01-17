@@ -166,4 +166,4 @@ MonoBehaviour:
   AngularVelocity: 0
   AngularAcceleration: 0
   MaxVelocity: 10
-  LifeTime: 5
+  LifeTime: 4

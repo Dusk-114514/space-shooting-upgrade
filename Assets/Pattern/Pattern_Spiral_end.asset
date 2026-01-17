@@ -27,5 +27,5 @@ MonoBehaviour:
   SenderAcceleration: 0
   Count: 100
   LineAngle: 5
-  SendInterval: 0.5
+  SendInterval: 0.3
   prefabs: {fileID: 3808010006120773802, guid: 345ca627951d1e24aa118bab38e8a29b, type: 3}

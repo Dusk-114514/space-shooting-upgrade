@@ -404,7 +404,7 @@ GameObject:
   - component: {fileID: 50539334}
   - component: {fileID: 50539333}
   - component: {fileID: 50539335}
-  m_Layer: 0
+  m_Layer: 9
   m_Name: HitPoint
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -420,8 +420,8 @@ Transform:
   m_GameObject: {fileID: 50539331}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -0.0062, y: 0.1991, z: 0}
-  m_LocalScale: {x: 2.1340919, y: 1.298028, z: 1.0296}
+  m_LocalPosition: {x: -0.003, y: 0.223, z: 0}
+  m_LocalScale: {x: 1.6820912, y: 1.0231057, z: 0.81153077}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 927478591}
@@ -515,7 +515,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_Sprite: {fileID: 10913, guid: 0000000000000000f000000000000000, type: 0}
-  m_Color: {r: 1, g: 0, b: 0, a: 1}
+  m_Color: {r: 1, g: 0.10711922, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -6243,7 +6243,7 @@ GameObject:
   - component: {fileID: 927478594}
   - component: {fileID: 927478595}
   - component: {fileID: 927478596}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Player
   m_TagString: Player
   m_Icon: {fileID: 0}
@@ -6356,7 +6356,7 @@ MonoBehaviour:
   laserBulletSpeed: 20
   shotgunSpreadAngle: 30
   shotgunBulletCount: 5
-  fireRate: 0.8
+  fireRate: 0.5
 --- !u!114 &927478594
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7078,7 +7078,7 @@ MonoBehaviour:
     duration: 0
     waitUntilBossDeath: 0
     danmakuConfig: {fileID: 0}
-    sniperConfig: {fileID: 11400000, guid: 520bad58cd486d0429d7c3df42584d19, type: 2}
+    sniperConfig: {fileID: 0}
     minionGroups:
     - prefab: {fileID: 2136066396781179594, guid: 4bab08118cfad684aa34ce058663472c, type: 3}
       pattern: 0
@@ -7100,7 +7100,7 @@ MonoBehaviour:
     duration: 30
     waitUntilBossDeath: 0
     danmakuConfig: {fileID: 11400000, guid: 6c4bf8645bf82a244a906ba41f6cd928, type: 2}
-    sniperConfig: {fileID: 0}
+    sniperConfig: {fileID: 11400000, guid: 520bad58cd486d0429d7c3df42584d19, type: 2}
     minionGroups: []
   - phaseName: Charge Mode
     isInvulnerable: 1

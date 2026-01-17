@@ -75,20 +75,20 @@ public class BossController : MonoBehaviour
 
     private Coroutine currentPhaseCoroutine;
     private Vector3 initialPosition;
+
+    // --- 【修改点1】添加所有生成物的追踪列表，用于阶段切换时的清理 ---
     private List<GameObject> activeRunes = new List<GameObject>();
-    // 追踪活跃的神风小怪
     private List<GameObject> activeSuicideMinions = new List<GameObject>();
+    private List<GameObject> activeStandardMinions = new List<GameObject>(); // 新增：追踪普通小怪
 
     private void Awake()
     {
         bossHealth = GetComponent<EnemyHealth>();
         bossMovement = GetComponent<BossMovement>();
 
-        // 【核心修复】改为 GetComponentInChildren，这样即便挂在子物体上也能找到
         normalSender = GetComponentInChildren<Sender>();
         sniperSender = GetComponentInChildren<AimedSender>();
 
-        // 增加两句调试日志，确保找到了
         if (normalSender == null) Debug.LogError("❌ BossController 没找到 Sender 组件！请检查它是否挂在 Boss 或其子物体上。");
         else Debug.Log("✅ BossController 成功连接 Sender。");
 
@@ -100,19 +100,9 @@ public class BossController : MonoBehaviour
     {
         initialPosition = transform.position;
 
-        // 【游戏开始】强制关闭所有发射器，确保干净的开局
-        if (normalSender != null)
-        {
-            normalSender.SetPattern(null);
-        }
-        if (sniperSender != null)
-        {
-            sniperSender.SetPattern(null);
-        }
-        if (bossMovement != null)
-        {
-            bossMovement.enabled = false;
-        }
+        if (normalSender != null) normalSender.SetPattern(null);
+        if (sniperSender != null) sniperSender.SetPattern(null);
+        if (bossMovement != null) bossMovement.enabled = false;
 
         StartCoroutine(GlobalGameTimer());
         StartCoroutine(MainCombatLoop());
@@ -132,6 +122,8 @@ public class BossController : MonoBehaviour
         {
             StopCoroutine(currentPhaseCoroutine);
         }
+        // 狂暴前也清理一次战场
+        CleanupAllEntities();
         StartCoroutine(RunPhase(enragePhase));
     }
 
@@ -149,22 +141,22 @@ public class BossController : MonoBehaviour
             currentPhaseCoroutine = StartCoroutine(RunPhase(currentPhase));
             yield return currentPhaseCoroutine;
 
-            // --- 阶段间隙 (休息时间) ---
+            // --- 阶段间隙 (Transition) ---
             if (!isEnraged && bossHealth.GetCurrentHealth() > 0)
             {
-                // 【核心】间隙期间，强制设为 null，确保 Sender 闭嘴
+                // 1. 关闭攻击和移动
                 if (normalSender != null) normalSender.SetPattern(null);
                 if (sniperSender != null) sniperSender.SetPattern(null);
                 if (bossMovement != null) bossMovement.enabled = false;
 
-                // 开启间隙无敌
+                // 2. 开启间隙无敌
                 bossHealth.SetDirectionalShield(false, 0);
                 bossHealth.SetInvulnerable(true);
 
-                // 清理上一阶段的残留物
-                ClearRunes();
+                // 3. 【修改点2】彻底清理上一阶段的所有残留物 (小怪、自爆怪、符文)
+                CleanupAllEntities();
 
-                // Boss 归位动画
+                // 4. Boss 归位动画
                 float transitionTime = 2.0f;
                 float elapsed = 0f;
                 Vector3 startPos = transform.position;
@@ -187,7 +179,7 @@ public class BossController : MonoBehaviour
         Coroutine shieldShuffler = null;
         Coroutine suicideSquadLoop = null;
 
-        // 1. 设置机制 (无敌/护盾)
+        // 1. 设置机制
         if (phase.useDirectionalShield)
         {
             bossHealth.SetDirectionalShield(true, Random.Range(0f, 360f));
@@ -204,30 +196,24 @@ public class BossController : MonoBehaviour
             bossMovement.enabled = phase.enableMovement;
         }
 
-        // 2. 【核心】根据配置设置发射器
-        if (normalSender != null)
-        {
-            normalSender.SetPattern(phase.danmakuConfig);
-        }
-        if (sniperSender != null)
-        {
-            sniperSender.SetPattern(phase.sniperConfig);
-        }
+        // 2. 设置发射器
+        if (normalSender != null) normalSender.SetPattern(phase.danmakuConfig);
+        if (sniperSender != null) sniperSender.SetPattern(phase.sniperConfig);
 
-        // 3. 生成护盾小怪
+        // 3. 生成普通小怪
         minionsAliveCount = 0;
         foreach (var group in phase.minionGroups)
         {
             yield return StartCoroutine(SpawnGroup(group));
         }
 
-        // 4. 启动神风特攻循环 (P1)
+        // 4. 启动神风特攻循环
         if (phase.spawnSuicideSquad)
         {
             suicideSquadLoop = StartCoroutine(SuicideSquadLoop(phase.suicideSquadCount, phase.suicideSquadInterval));
         }
 
-        // 5. 生成符文 (P2)
+        // 5. 生成符文
         if (phase.runePositions != null && phase.runePositions.Count > 0)
         {
             SpawnRunes(phase.runePositions);
@@ -247,35 +233,30 @@ public class BossController : MonoBehaviour
             yield return new WaitForSeconds(phase.duration);
         }
 
-        // 阶段结束清理
+        // 阶段自然结束时的清理
         if (shieldShuffler != null) StopCoroutine(shieldShuffler);
         if (suicideSquadLoop != null) StopCoroutine(suicideSquadLoop);
 
-        ClearRunes();
+        // 注意：实体清理工作交给了 MainCombatLoop 中的 Transition 部分统一处理
     }
 
-    // --- 神风特攻队循环逻辑 ---
+    // --- 神风特攻队逻辑 ---
     private IEnumerator SuicideSquadLoop(int count, float interval)
     {
-        // 首次立刻生成
         yield return StartCoroutine(SpawnSuicideSquad(count));
 
         while (true)
         {
-            // 清理空对象
+            // 清理 list 中的空引用
             activeSuicideMinions.RemoveAll(item => item == null);
 
-            // 【防重叠】只要场上还有活着的，就一直等待
             if (activeSuicideMinions.Count > 0)
             {
                 yield return null;
                 continue;
             }
 
-            // 全死光了，开始倒计时
             yield return new WaitForSeconds(interval);
-
-            // 倒计时结束，生成下一波
             yield return StartCoroutine(SpawnSuicideSquad(count));
         }
     }
@@ -293,31 +274,25 @@ public class BossController : MonoBehaviour
 
         for (int i = 0; i < countPerSide; i++)
         {
-            // --- 左边小怪 ---
+            // --- 左边 ---
             GameObject lMinion = Instantiate(suicideMinionPrefab, leftSpawn, Quaternion.identity);
             SuicideMinion lScript = lMinion.GetComponent<SuicideMinion>();
-
             if (lScript != null)
             {
-                // 计算位置和延迟
                 Vector3 targetPos = new Vector3(-(startX + i * spacing), targetY, 0f);
-                float delay = i * 0.4f;
-                lScript.Initialize(targetPos, delay);
+                lScript.Initialize(targetPos, i * 0.4f);
             }
-            activeSuicideMinions.Add(lMinion);
+            activeSuicideMinions.Add(lMinion); // 注册追踪
 
-            // --- 右边小怪 ---
+            // --- 右边 ---
             GameObject rMinion = Instantiate(suicideMinionPrefab, rightSpawn, Quaternion.identity);
             SuicideMinion rScript = rMinion.GetComponent<SuicideMinion>();
-
             if (rScript != null)
             {
-                // 计算位置和延迟
                 Vector3 targetPos = new Vector3(startX + i * spacing, targetY, 0f);
-                float delay = i * 0.4f;
-                rScript.Initialize(targetPos, delay);
+                rScript.Initialize(targetPos, i * 0.4f);
             }
-            activeSuicideMinions.Add(rMinion);
+            activeSuicideMinions.Add(rMinion); // 注册追踪
 
             yield return new WaitForSeconds(0.2f);
         }
@@ -335,13 +310,23 @@ public class BossController : MonoBehaviour
         }
     }
 
-    private void ClearRunes()
+    // 【修改点3】统一清理所有实体的方法
+    private void CleanupAllEntities()
     {
-        foreach (var rune in activeRunes)
-        {
-            if (rune != null) Destroy(rune);
-        }
+        // 1. 清理符文
+        foreach (var rune in activeRunes) { if (rune != null) Destroy(rune); }
         activeRunes.Clear();
+
+        // 2. 清理自爆小怪
+        foreach (var minion in activeSuicideMinions) { if (minion != null) Destroy(minion); }
+        activeSuicideMinions.Clear();
+
+        // 3. 清理普通小怪
+        foreach (var minion in activeStandardMinions) { if (minion != null) Destroy(minion); }
+        activeStandardMinions.Clear();
+
+        // 4. 重置计数器，防止逻辑卡死
+        minionsAliveCount = 0;
     }
 
     private IEnumerator ShuffleShieldRoutine()
@@ -371,6 +356,10 @@ public class BossController : MonoBehaviour
     private void RegisterMinion(GameObject minionObj, MinionGroupConfig group, Vector3 spawnPos)
     {
         minionsAliveCount++;
+
+        // 【修改点4】将生成的普通小怪也加入列表
+        activeStandardMinions.Add(minionObj);
+
         Enemy enemyScript = minionObj.GetComponent<Enemy>();
         if (enemyScript != null)
         {
